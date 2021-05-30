@@ -5,19 +5,31 @@ import pandas as pd
 import json
 
 ori = './label-all-npy'
-files = os.listdir(ori)
-res = './label-all-jpg'
-jsonPath = './coco/annotations'
+files = [file.split('.')[0] for file in os.listdir(ori)]
+res = './labels'
+jsonPath = './label-all-data.json'
+with open(jsonPath, 'r') as f:
+    jsonData = json.load(f)
+
+# csv_labels = open("csv_labels.csv", "w")
 
 
-csv_labels = open("csv_labels.csv", "w")
+for idx, item in enumerate(jsonData):
+    if item['id'] not in files:
+        continue
 
-for item in jsonData:
+    img_dir = os.path.join('./label-all-npy', item['id'] + '.npy')
+    img = np.load(img_dir)
+    imgh, imgw = img.shape
+
     points = item['point']
-    print(points)
+    # print(points)
     points = sorted(points, key=lambda x: x['coord'][1])
-    for i in range(len(points)):
 
+    txt_dir = os.path.join(res, item['id'] + '.txt')
+    txt_label = open(txt_dir, 'w')
+
+    for i in range(len(points)):
         point = points[i]
         xx, yy = point['coord'][0], point['coord'][1]
         if i == 0:
@@ -37,10 +49,18 @@ for item in jsonData:
             h = (yy - y2) * 2
             w = h * 1.4
 
-        bbox = [str(xx - w / 2), str(yy - h / 2), str(xx + w / 2), str(yy + h / 2)]
+        bbox = [max(xx - w / 2, 0), max(yy - h / 2, 0), min(xx + w / 2, imgw), min(yy + h / 2, imgh)]
+
+        for j in range(11):
+            if jsonData[idx]['point'][j]['identification'] == point['identification']:
+                jsonData[idx]['point'][j]['bbox'] = bbox
         label = str(point['class'])
         filename = item['id'] + '.jpg'
         filename = os.path.join(res, filename)
-        csv_labels.write(filename + "," + bbox[0] + "," + bbox[1] + "," + bbox[2] + "," + bbox[3] + "," + label + "\n")
+        bbox = [str(i), str(xx), str(yy), str(w), str(h)]
+        txt_label.write(' '.join(bbox))
+        txt_label.write('\n')
 
-csv_labels.close()
+    txt_label.close()
+with open('data-bbox-cls.json', 'w') as f:
+    json.dump(jsonData, f)
