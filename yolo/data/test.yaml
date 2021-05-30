@@ -1,0 +1,8 @@
+train: ./yolo-data/images/train/
+val: ./yolo-data/images/test/
+
+# number of classes
+nc: 11
+
+# class names
+names: ['T12-L1', 'L1', 'L1-L2', 'L2', 'L2-L3', 'L3', 'L3-L4', 'L4', 'L4-L5', 'L5', 'L5-S1']
