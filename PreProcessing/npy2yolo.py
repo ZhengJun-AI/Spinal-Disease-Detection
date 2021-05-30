@@ -3,27 +3,49 @@ import os
 import cv2
 import pandas as pd
 import json
+from tqdm import tqdm
+import argparse
+import logging
 
-ori = './label-all-npy'
+parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                 description='Generate YOLO format labels')
+parser.add_argument('-n', '--npy', dest='npy', type=str, default='./label-all-npy',
+                    help='Path of npy files')
+parser.add_argument('-l', '--label', dest='label', type=str, default='./labels',
+                    help='Path of label file results')
+parser.add_argument('-j', '--json', type=str, default='./label-all-data.json',
+                    dest='json', help='Path of json file of all labels')
+par = parser.parse_args()
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s : %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
+
+ori = par.npy
+res = par.label
+jsonPath = par.json
+
+assert os.path.exists(ori), f'{ori} not exist!'
 files = [file.split('.')[0] for file in os.listdir(ori)]
-res = './labels'
-jsonPath = './label-all-data.json'
+logging.info(f'Load {len(files)} npy files')
+
+assert os.path.exists(jsonPath), f'{jsonPath} not exist!'
 with open(jsonPath, 'r') as f:
     jsonData = json.load(f)
 
-# csv_labels = open("csv_labels.csv", "w")
-
+if not os.path.exists(res):
+    os.mkdir(res)
 
 for idx, item in enumerate(jsonData):
     if item['id'] not in files:
         continue
 
     img_dir = os.path.join('./label-all-npy', item['id'] + '.npy')
+    assert os.path.exists(img_dir), f'{img_dir} not exist!'
     img = np.load(img_dir)
+
     imgh, imgw = img.shape
 
     points = item['point']
-    # print(points)
     points = sorted(points, key=lambda x: x['coord'][1])
 
     txt_dir = os.path.join(res, item['id'] + '.txt')
@@ -49,18 +71,12 @@ for idx, item in enumerate(jsonData):
             h = (yy - y2) * 2
             w = h * 1.4
 
-        bbox = [max(xx - w / 2, 0), max(yy - h / 2, 0), min(xx + w / 2, imgw), min(yy + h / 2, imgh)]
-
-        for j in range(11):
-            if jsonData[idx]['point'][j]['identification'] == point['identification']:
-                jsonData[idx]['point'][j]['bbox'] = bbox
-        label = str(point['class'])
-        filename = item['id'] + '.jpg'
-        filename = os.path.join(res, filename)
-        bbox = [str(i), str(xx), str(yy), str(w), str(h)]
+        bbox = [i, max(xx - w / 2, 0) / imgw, max(yy - h / 2, 0) / imgh,
+                min(xx + w / 2, imgw) / imgw, min(yy + h / 2, imgh) / imgh]
+        bbox = list(map(str, bbox))
         txt_label.write(' '.join(bbox))
         txt_label.write('\n')
 
     txt_label.close()
-with open('data-bbox-cls.json', 'w') as f:
-    json.dump(jsonData, f)
+
+logging.info('Process Successfully!')
