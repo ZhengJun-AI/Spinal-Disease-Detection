@@ -1,0 +1,6 @@
+opencv-python
+scikit-image
+Pillow
+numpy
+argparse
+logging
